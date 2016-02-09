@@ -8,11 +8,9 @@ import (
 )
 
 type SimpleLogger struct {
-	outLock sync.Mutex
-	out     io.Writer
-
-	errLock sync.Mutex
-	err     io.Writer
+	lock sync.Mutex
+	out  io.Writer
+	err  io.Writer
 
 	criticalPrefixFmt string
 	errorPrefixFmt    string
@@ -30,21 +28,21 @@ func New(name string, out io.Writer, err io.Writer) *SimpleLogger {
 }
 
 func (s *SimpleLogger) CriticalPrintf(msg string, args ...interface{}) {
-	s.errLock.Lock()
+	s.lock.Lock()
 	simpleLoggerPrintf(s.err, s.criticalPrefixFmt, msg, args...)
-	s.errLock.Unlock()
+	s.lock.Unlock()
 }
 
 func (s *SimpleLogger) ErrorPrintf(msg string, args ...interface{}) {
-	s.errLock.Lock()
+	s.lock.Lock()
 	simpleLoggerPrintf(s.err, s.errorPrefixFmt, msg, args...)
-	s.errLock.Unlock()
+	s.lock.Unlock()
 }
 
 func (s *SimpleLogger) DebugPrintf(msg string, args ...interface{}) {
-	s.outLock.Lock()
+	s.lock.Lock()
 	simpleLoggerPrintf(s.out, s.debugPrefixFmt, msg, args...)
-	s.outLock.Unlock()
+	s.lock.Unlock()
 }
 
 func simpleLoggerPrintf(out io.Writer, prefixFmt string, msg string, args ...interface{}) {
