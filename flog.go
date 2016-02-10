@@ -1,6 +1,7 @@
 package flog
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -44,6 +45,7 @@ type flog struct {
 	warningWriter  io.Writer
 	infoWriter     io.Writer
 	debugWriter    io.Writer
+	buf            []byte
 
 	criticalFmt string
 	errorFmt    string
@@ -153,84 +155,84 @@ func (f *flog) SetDebugWriter(w io.Writer) io.Writer {
 
 func (f *flog) CriticalPrintf(format string, args ...interface{}) {
 	f.lock.Lock()
-	simpleLoggerPrintf(f.criticalWriter, f.criticalFmt, format, args...)
+	flogPrintf(f.buf, f.criticalWriter, f.criticalFmt, format, args...)
 	f.lock.Unlock()
 }
 
 func (f *flog) ErrorPrintf(format string, args ...interface{}) {
 	f.lock.Lock()
-	simpleLoggerPrintf(f.errorWriter, f.errorFmt, format, args...)
+	flogPrintf(f.buf, f.errorWriter, f.errorFmt, format, args...)
 	f.lock.Unlock()
 }
 
 func (f *flog) WarningPrintf(format string, args ...interface{}) {
 	f.lock.Lock()
-	simpleLoggerPrintf(f.warningWriter, f.warningFmt, format, args...)
+	flogPrintf(f.buf, f.warningWriter, f.warningFmt, format, args...)
 	f.lock.Unlock()
 }
 
 func (f *flog) InfoPrintf(format string, args ...interface{}) {
 	f.lock.Lock()
-	simpleLoggerPrintf(f.infoWriter, f.infoFmt, format, args...)
+	flogPrintf(f.buf, f.infoWriter, f.infoFmt, format, args...)
 	f.lock.Unlock()
 }
 
 func (f *flog) DebugPrintf(format string, args ...interface{}) {
 	f.lock.Lock()
-	simpleLoggerPrintf(f.debugWriter, f.debugFmt, format, args...)
+	flogPrintf(f.buf, f.debugWriter, f.debugFmt, format, args...)
 	f.lock.Unlock()
 }
 
 func (f *flog) CriticalPrintln(args ...interface{}) {
 	f.lock.Lock()
-	simpleLoggerPrintln(f.criticalWriter, f.criticalFmt, args...)
+	flogPrintln(f.buf, f.criticalWriter, f.criticalFmt, args...)
 	f.lock.Unlock()
 }
 
 func (f *flog) ErrorPrintln(args ...interface{}) {
 	f.lock.Lock()
-	simpleLoggerPrintln(f.errorWriter, f.errorFmt, args...)
+	flogPrintln(f.buf, f.errorWriter, f.errorFmt, args...)
 	f.lock.Unlock()
 }
 
 func (f *flog) WarningPrintln(args ...interface{}) {
 	f.lock.Lock()
-	simpleLoggerPrintln(f.warningWriter, f.warningFmt, args...)
+	flogPrintln(f.buf, f.warningWriter, f.warningFmt, args...)
 	f.lock.Unlock()
 }
 
 func (f *flog) InfoPrintln(args ...interface{}) {
 	f.lock.Lock()
-	simpleLoggerPrintln(f.infoWriter, f.infoFmt, args...)
+	flogPrintln(f.buf, f.infoWriter, f.infoFmt, args...)
 	f.lock.Unlock()
 }
 
 func (f *flog) DebugPrintln(args ...interface{}) {
 	f.lock.Lock()
-	simpleLoggerPrintln(f.debugWriter, f.debugFmt, args...)
+	flogPrintln(f.buf, f.debugWriter, f.debugFmt, args...)
 	f.lock.Unlock()
 }
 
-func simpleLoggerPrintf(out io.Writer, prefixFmt string, format string, args ...interface{}) {
-	if out != nil {
-		out.Write([]byte(time.Now().Format(prefixFmt)))
-		m := fmt.Sprintf(format, args...)
-		out.Write([]byte(m))
-		if len(m) < 1 || m[len(m)-1] != '\n' {
-			out.Write([]byte("\n"))
-		}
+func flogPrintf(buf []byte, out io.Writer, prefixFmt string, format string, args ...interface{}) {
+	buf = time.Now().AppendFormat(buf[:0], prefixFmt)
+	bufr := bytes.NewBuffer(buf)
+	fmt.Fprintf(bufr, format, args...)
+	buf = bufr.Bytes()
+	if len(buf) == 0 || buf[len(buf)-1] != '\n' {
+		buf = append(buf, '\n')
 	}
+	out.Write(buf)
 }
 
-func simpleLoggerPrintln(out io.Writer, prefixFmt string, args ...interface{}) {
-	if out != nil {
-		out.Write([]byte(time.Now().Format(prefixFmt)))
-		m := fmt.Sprintln(args...)
-		out.Write([]byte(m))
-		if len(m) < 1 || m[len(m)-1] != '\n' {
-			out.Write([]byte("\n"))
-		}
+func flogPrintln(buf []byte, out io.Writer, prefixFmt string, args ...interface{}) {
+	buf = time.Now().AppendFormat(buf[:0], prefixFmt)
+	bufr := bytes.NewBuffer(buf)
+	fmt.Fprintln(bufr, args...)
+	buf = bufr.Bytes()
+	if len(buf) == 0 || buf[len(buf)-1] != '\n' {
+		buf = append(buf, '\n')
 	}
+	out.Write(buf)
 }
 
 type Logger interface {
