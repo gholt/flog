@@ -214,6 +214,9 @@ func (f *flog) DebugPrintln(args ...interface{}) {
 }
 
 func flogPrintf(buf []byte, out io.Writer, prefixFmt string, format string, args ...interface{}) {
+	if out == nil {
+		return
+	}
 	buf = time.Now().AppendFormat(buf[:0], prefixFmt)
 	bufr := bytes.NewBuffer(buf)
 	fmt.Fprintf(bufr, format, args...)
@@ -225,6 +228,9 @@ func flogPrintf(buf []byte, out io.Writer, prefixFmt string, format string, args
 }
 
 func flogPrintln(buf []byte, out io.Writer, prefixFmt string, args ...interface{}) {
+	if out == nil {
+		return
+	}
 	buf = time.Now().AppendFormat(buf[:0], prefixFmt)
 	bufr := bytes.NewBuffer(buf)
 	fmt.Fprintln(bufr, args...)
