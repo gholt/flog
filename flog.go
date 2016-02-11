@@ -1,3 +1,7 @@
+// Package flog provides a logging facility with the usual syslog-style levels
+// of Critical, Error, Warning, Info, and Debug. It just uses os.Stderr and
+// os.Stdout by default, and it's mostly here to provide a quick, easy, yet
+// replaceable way to do logging.
 package flog
 
 import (
