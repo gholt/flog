@@ -25,7 +25,7 @@ func CriticalPrintf(format string, args ...interface{}) {
 }
 
 // CriticalPrintln is a convenience function equivalent to
-// Default.CriticaPrintln.
+// Default.CriticalPrintln.
 func CriticalPrintln(args ...interface{}) {
 	Default.CriticalPrintln(args...)
 }
