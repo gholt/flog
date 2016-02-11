@@ -342,11 +342,20 @@ func (f *flog) Sub(c *Config) Flog {
 // Logger is an interface to match the most common calls to the standard
 // library's log.Logger.
 type Logger interface {
+	// Fatal is equivalent to Print() followed by a call to os.Exit(1).
 	Fatal(args ...interface{})
+	// Fatalf is equivalent to Printf() followed by a call to os.Exit(1).
 	Fatalf(format string, args ...interface{})
+	// Fatalln is equivalent to Println() followed by a call to os.Exit(1).
 	Fatalln(args ...interface{})
+	// Print calls Output to print to the standard logger. Arguments are
+	// handled in the manner of fmt.Print.
 	Print(args ...interface{})
+	// Printf calls Output to print to the standard logger. Arguments are
+	// handled in the manner of fmt.Printf.
 	Printf(format string, args ...interface{})
+	// Println calls Output to print to the standard logger. Arguments are
+	// handled in the manner of fmt.Println.
 	Println(args ...interface{})
 }
 
