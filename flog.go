@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-var Default Flog = New(nil)
+var Default = New(nil)
 
 func CriticalPrintf(format string, args ...interface{}) {
 	Default.CriticalPrintf(format, args...)
