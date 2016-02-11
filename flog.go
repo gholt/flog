@@ -9,63 +9,95 @@ import (
 	"time"
 )
 
+// Default is an instance of Flog for ease of use. Though I'd recommend writing
+// your code to accept a Flog or Logger so others can alter it later; this
+// Default can be changed to indirectly have a similar effect.
 var Default = New(nil)
 
+// CriticalPrintf is a convenience function equivalent to
+// Default.CriticalPrintf.
 func CriticalPrintf(format string, args ...interface{}) {
 	Default.CriticalPrintf(format, args...)
 }
 
+// CriticalPrintln is a convenience function equivalent to
+// Default.CriticaPrintln.
 func CriticalPrintln(args ...interface{}) {
 	Default.CriticalPrintln(args...)
 }
 
+// ErrorPrintf is a convenience function equivalent to Default.ErrorPrintf.
 func ErrorPrintf(format string, args ...interface{}) {
 	Default.ErrorPrintf(format, args...)
 }
 
+// ErrorPrintln is a convenience function equivalent to Default.ErrorPrintln.
 func ErrorPrintln(args ...interface{}) {
 	Default.ErrorPrintln(args...)
 }
 
+// WarningPrintf is a convenience function equivalent to Default.WarningPrintf.
 func WarningPrintf(format string, args ...interface{}) {
 	Default.WarningPrintf(format, args...)
 }
 
+// WarningPrintln is a convenience function equivalent to
+// Default.WarningPrintln.
 func WarningPrintln(args ...interface{}) {
 	Default.WarningPrintln(args...)
 }
 
+// InfoPrintf is a convenience function equivalent to Default.InfoPrintf.
 func InfoPrintf(format string, args ...interface{}) {
 	Default.InfoPrintf(format, args...)
 }
 
+// InfoPrintln is a convenience function equivalent to Default.InfoPrintln.
 func InfoPrintln(args ...interface{}) {
 	Default.InfoPrintln(args...)
 }
 
+// DebugPrintf is a convenience function equivalent to Default.DebugPrintf.
 func DebugPrintf(format string, args ...interface{}) {
 	Default.DebugPrintf(format, args...)
 }
 
+// DebugPrintln is a convenience function equivalent to Default.DebugPrintln.
 func DebugPrintln(args ...interface{}) {
 	Default.DebugPrintln(args...)
 }
 
+// Sub is a convenience function equivalent to Default.Sub.
 func Sub(c *Config) Flog {
 	return Default.Sub(c)
 }
 
+// Flog provides a logging facility with the usual syslog-style levels of
+// Critical, Error, Warning, Info, and Debug.
 type Flog interface {
+	// CriticalPrintf logs the result of fmt.Sprintf(format, args).
 	CriticalPrintf(format string, args ...interface{})
+	// CriticalPrintln logs the result of fmt.Sprintln(args).
 	CriticalPrintln(args ...interface{})
+	// ErrorPrintf logs the result of fmt.Sprintf(format, args).
 	ErrorPrintf(format string, args ...interface{})
+	// ErrorPrintln logs the result of fmt.Sprintln(args).
 	ErrorPrintln(args ...interface{})
+	// WarningPrintf logs the result of fmt.Sprintf(format, args).
 	WarningPrintf(format string, args ...interface{})
+	// WarningPrintln logs the result of fmt.Sprintln(args).
 	WarningPrintln(args ...interface{})
+	// InfoPrintf logs the result of fmt.Sprintf(format, args).
 	InfoPrintf(format string, args ...interface{})
+	// InfoPrintln logs the result of fmt.Sprintln(args).
 	InfoPrintln(args ...interface{})
+	// DebugPrintf logs the result of fmt.Sprintf(format, args).
 	DebugPrintf(format string, args ...interface{})
+	// DebugPrintln logs the result of fmt.Sprintln(args).
 	DebugPrintln(args ...interface{})
+	// Sub creates a new Flog instance based on this one, possibly with
+	// overrides from the given Config. If Config.Name is set, it will be
+	// appended to the original Flog instance's name.
 	Sub(c *Config) Flog
 }
 
@@ -76,15 +108,34 @@ func (n *nilWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+// NilWriter should be used in the Config when you wish a log level to *not*
+// log anything. If you set an io.Writer in the Config to nil, it is assumed
+// you want the default value.
 var NilWriter = &nilWriter{}
 
+// Config is used when creating a new Flog instance.
 type Config struct {
-	Name           string
+	// Name will be used in the prefix of each log line.
+	Name string
+	// CriticalWriter will accept Critical level log output. If set to nil, the
+	// default os.Stderr will be used. To discard all Critical level output,
+	// set to NilWriter.
 	CriticalWriter io.Writer
-	ErrorWriter    io.Writer
-	WarningWriter  io.Writer
-	InfoWriter     io.Writer
-	DebugWriter    io.Writer
+	// ErrorWriter will accept Error level log output. If set to nil, the
+	// default os.Stderr will be used. To discard all Error level output, set
+	// to NilWriter.
+	ErrorWriter io.Writer
+	// WarningWriter will accept Warning level log output. If set to nil, the
+	// default os.Stderr will be used. To discard all Warning level output, set
+	// to NilWriter.
+	WarningWriter io.Writer
+	// InfoWriter will accept Info level log output. If set to nil, the default
+	// os.Stdout will be used. To discard all Info level output, set to
+	// NilWriter.
+	InfoWriter io.Writer
+	// DebugWriter will accept Debug level log output. If set to nil, the
+	// default is to discard all Debug level output.
+	DebugWriter io.Writer
 }
 
 func resolveConfig(c *Config, f *flog) *Config {
@@ -164,6 +215,7 @@ type flog struct {
 	debugFormat    string
 }
 
+// New returns a new Flog instance based on the Config given.
 func New(c *Config) Flog {
 	cfg := resolveConfig(c, nil)
 	f := &flog{
@@ -283,6 +335,8 @@ func (f *flog) Sub(c *Config) Flog {
 	return New(cfg)
 }
 
+// Logger is an interface to match the most common calls to the standard
+// library's log.Logger.
 type Logger interface {
 	Fatal(args ...interface{})
 	Fatalf(format string, args ...interface{})
@@ -324,6 +378,8 @@ func (w *wrapper) Println(args ...interface{}) {
 	w.println(args)
 }
 
+// CriticalLogger returns a Logger instance that will send its output to the
+// Critical level of the Flog given.
 func CriticalLogger(f Flog) Logger {
 	return &wrapper{
 		printf:  f.CriticalPrintf,
@@ -331,6 +387,8 @@ func CriticalLogger(f Flog) Logger {
 	}
 }
 
+// ErrorLogger returns a Logger instance that will send its output to the Error
+// level of the Flog given.
 func ErrorLogger(f Flog) Logger {
 	return &wrapper{
 		printf:  f.ErrorPrintf,
@@ -338,6 +396,8 @@ func ErrorLogger(f Flog) Logger {
 	}
 }
 
+// WarningLogger returns a Logger instance that will send its output to the
+// Warning level of the Flog given.
 func WarningLogger(f Flog) Logger {
 	return &wrapper{
 		printf:  f.WarningPrintf,
@@ -345,6 +405,8 @@ func WarningLogger(f Flog) Logger {
 	}
 }
 
+// InfoLogger returns a Logger instance that will send its output to the Info
+// level of the Flog given.
 func InfoLogger(f Flog) Logger {
 	return &wrapper{
 		printf:  f.InfoPrintf,
@@ -352,6 +414,8 @@ func InfoLogger(f Flog) Logger {
 	}
 }
 
+// DebugLogger returns a Logger instance that will send its output to the Debug
+// level of the Flog given.
 func DebugLogger(f Flog) Logger {
 	return &wrapper{
 		printf:  f.DebugPrintf,
