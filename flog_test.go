@@ -6,5 +6,4 @@ import (
 	"google.golang.org/grpc/grpclog"
 )
 
-var writers FlogWriters = Std.(FlogWriters)
-var gprcLogger grpclog.Logger = DebugLogger(Std)
+var gprcLogger grpclog.Logger = ErrorLogger(Default)

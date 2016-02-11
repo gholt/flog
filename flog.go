@@ -9,7 +9,51 @@ import (
 	"time"
 )
 
-var Std Flog = New("", os.Stderr, os.Stderr, os.Stderr, os.Stdout, nil)
+var Default Flog = New(nil)
+
+func CriticalPrintf(format string, args ...interface{}) {
+	Default.CriticalPrintf(format, args...)
+}
+
+func CriticalPrintln(args ...interface{}) {
+	Default.CriticalPrintln(args...)
+}
+
+func ErrorPrintf(format string, args ...interface{}) {
+	Default.ErrorPrintf(format, args...)
+}
+
+func ErrorPrintln(args ...interface{}) {
+	Default.ErrorPrintln(args...)
+}
+
+func WarningPrintf(format string, args ...interface{}) {
+	Default.WarningPrintf(format, args...)
+}
+
+func WarningPrintln(args ...interface{}) {
+	Default.WarningPrintln(args...)
+}
+
+func InfoPrintf(format string, args ...interface{}) {
+	Default.InfoPrintf(format, args...)
+}
+
+func InfoPrintln(args ...interface{}) {
+	Default.InfoPrintln(args...)
+}
+
+func DebugPrintf(format string, args ...interface{}) {
+	Default.DebugPrintf(format, args...)
+}
+
+func DebugPrintln(args ...interface{}) {
+	Default.DebugPrintln(args...)
+}
+
+func Sub(c *Config) Flog {
+	return Default.Sub(c)
+}
 
 type Flog interface {
 	CriticalPrintf(format string, args ...interface{})
@@ -22,20 +66,85 @@ type Flog interface {
 	InfoPrintln(args ...interface{})
 	DebugPrintf(format string, args ...interface{})
 	DebugPrintln(args ...interface{})
+	Sub(c *Config) Flog
 }
 
-type FlogWriters interface {
-	Flog
-	CriticalWriter() io.Writer
-	SetCriticalWriter(w io.Writer) io.Writer
-	ErrorWriter() io.Writer
-	SetErrorWriter(w io.Writer) io.Writer
-	WarningWriter() io.Writer
-	SetWarningWriter(w io.Writer) io.Writer
-	InfoWriter() io.Writer
-	SetInfoWriter(w io.Writer) io.Writer
-	DebugWriter() io.Writer
-	SetDebugWriter(w io.Writer) io.Writer
+type nilWriter struct {
+}
+
+func (n *nilWriter) Write(p []byte) (int, error) {
+	return len(p), nil
+}
+
+var NilWriter = &nilWriter{}
+
+type Config struct {
+	Name           string
+	CriticalWriter io.Writer
+	ErrorWriter    io.Writer
+	WarningWriter  io.Writer
+	InfoWriter     io.Writer
+	DebugWriter    io.Writer
+}
+
+func resolveConfig(c *Config, f *flog) *Config {
+	cfg := &Config{}
+	if c != nil {
+		*cfg = *c
+	}
+	if f != nil && f.name != "" {
+		if cfg.Name != "" {
+			cfg.Name = f.name + " " + cfg.Name
+		} else {
+			cfg.Name = f.name
+		}
+	}
+	if cfg.CriticalWriter == nil {
+		if f != nil {
+			cfg.CriticalWriter = f.criticalWriter
+		} else {
+			cfg.CriticalWriter = os.Stderr
+		}
+	} else if _, ok := cfg.CriticalWriter.(*nilWriter); ok {
+		cfg.CriticalWriter = nil
+	}
+	if cfg.ErrorWriter == nil {
+		if f != nil {
+			cfg.ErrorWriter = f.errorWriter
+		} else {
+			cfg.ErrorWriter = os.Stderr
+		}
+	} else if _, ok := cfg.ErrorWriter.(*nilWriter); ok {
+		cfg.ErrorWriter = nil
+	}
+	if cfg.WarningWriter == nil {
+		if f != nil {
+			cfg.WarningWriter = f.warningWriter
+		} else {
+			cfg.WarningWriter = os.Stderr
+		}
+	} else if _, ok := cfg.WarningWriter.(*nilWriter); ok {
+		cfg.WarningWriter = nil
+	}
+	if cfg.InfoWriter == nil {
+		if f != nil {
+			cfg.InfoWriter = f.infoWriter
+		} else {
+			cfg.InfoWriter = os.Stdout
+		}
+	} else if _, ok := cfg.InfoWriter.(*nilWriter); ok {
+		cfg.InfoWriter = nil
+	}
+	if cfg.DebugWriter == nil {
+		if f != nil {
+			cfg.DebugWriter = f.debugWriter
+		} else {
+			cfg.DebugWriter = nil
+		}
+	} else if _, ok := cfg.DebugWriter.(*nilWriter); ok {
+		cfg.DebugWriter = nil
+	}
+	return cfg
 }
 
 type flog struct {
@@ -47,177 +156,105 @@ type flog struct {
 	debugWriter    io.Writer
 	buf            []byte
 
-	criticalFmt string
-	errorFmt    string
-	warningFmt  string
-	infoFmt     string
-	debugFmt    string
+	name           string
+	criticalFormat string
+	errorFormat    string
+	warningFormat  string
+	infoFormat     string
+	debugFormat    string
 }
 
-func New(name string, criticalWriter io.Writer, errorWriter io.Writer, warningWriter io.Writer, infoWriter io.Writer, debugWriter io.Writer) FlogWriters {
+func New(c *Config) Flog {
+	cfg := resolveConfig(c, nil)
 	f := &flog{
-		criticalWriter: criticalWriter,
-		errorWriter:    errorWriter,
-		warningWriter:  warningWriter,
-		infoWriter:     infoWriter,
-		debugWriter:    debugWriter,
+		name:           cfg.Name,
+		criticalWriter: cfg.CriticalWriter,
+		errorWriter:    cfg.ErrorWriter,
+		warningWriter:  cfg.WarningWriter,
+		infoWriter:     cfg.InfoWriter,
+		debugWriter:    cfg.DebugWriter,
 	}
-	if name == "" {
-		f.criticalFmt = fmt.Sprintf("2006-01-02 15:05:05 CRITICAL ")
-		f.errorFmt = fmt.Sprintf("2006-01-02 15:05:05 ERROR ")
-		f.warningFmt = fmt.Sprintf("2006-01-02 15:05:05 WARNING ")
-		f.infoFmt = fmt.Sprintf("2006-01-02 15:05:05 INFO ")
-		f.debugFmt = fmt.Sprintf("2006-01-02 15:05:05 DEBUG ")
+	if f.name == "" {
+		f.criticalFormat = fmt.Sprintf("2006-01-02 15:05:05 CRITICAL ")
+		f.errorFormat = fmt.Sprintf("2006-01-02 15:05:05 ERROR ")
+		f.warningFormat = fmt.Sprintf("2006-01-02 15:05:05 WARNING ")
+		f.infoFormat = fmt.Sprintf("2006-01-02 15:05:05 INFO ")
+		f.debugFormat = fmt.Sprintf("2006-01-02 15:05:05 DEBUG ")
 	} else {
-		f.criticalFmt = fmt.Sprintf("2006-01-02 15:05:05 CRITICAL %s ", name)
-		f.errorFmt = fmt.Sprintf("2006-01-02 15:05:05 ERROR %s ", name)
-		f.warningFmt = fmt.Sprintf("2006-01-02 15:05:05 WARNING %s ", name)
-		f.infoFmt = fmt.Sprintf("2006-01-02 15:05:05 INFO %s ", name)
-		f.debugFmt = fmt.Sprintf("2006-01-02 15:05:05 DEBUG %s ", name)
+		f.criticalFormat = fmt.Sprintf("2006-01-02 15:05:05 CRITICAL %s ", f.name)
+		f.errorFormat = fmt.Sprintf("2006-01-02 15:05:05 ERROR %s ", f.name)
+		f.warningFormat = fmt.Sprintf("2006-01-02 15:05:05 WARNING %s ", f.name)
+		f.infoFormat = fmt.Sprintf("2006-01-02 15:05:05 INFO %s ", f.name)
+		f.debugFormat = fmt.Sprintf("2006-01-02 15:05:05 DEBUG %s ", f.name)
 	}
 	return f
 }
 
-func (f *flog) CriticalWriter() io.Writer {
-	f.lock.Lock()
-	w := f.criticalWriter
-	f.lock.Unlock()
-	return w
-}
-
-func (f *flog) SetCriticalWriter(w io.Writer) io.Writer {
-	f.lock.Lock()
-	o := f.criticalWriter
-	f.criticalWriter = w
-	f.lock.Unlock()
-	return o
-}
-
-func (f *flog) ErrorWriter() io.Writer {
-	f.lock.Lock()
-	w := f.errorWriter
-	f.lock.Unlock()
-	return w
-}
-
-func (f *flog) SetErrorWriter(w io.Writer) io.Writer {
-	f.lock.Lock()
-	o := f.errorWriter
-	f.errorWriter = w
-	f.lock.Unlock()
-	return o
-}
-
-func (f *flog) WarningWriter() io.Writer {
-	f.lock.Lock()
-	w := f.warningWriter
-	f.lock.Unlock()
-	return w
-}
-
-func (f *flog) SetWarningWriter(w io.Writer) io.Writer {
-	f.lock.Lock()
-	o := f.warningWriter
-	f.warningWriter = w
-	f.lock.Unlock()
-	return o
-}
-
-func (f *flog) InfoWriter() io.Writer {
-	f.lock.Lock()
-	w := f.infoWriter
-	f.lock.Unlock()
-	return w
-}
-
-func (f *flog) SetInfoWriter(w io.Writer) io.Writer {
-	f.lock.Lock()
-	o := f.infoWriter
-	f.infoWriter = w
-	f.lock.Unlock()
-	return o
-}
-
-func (f *flog) DebugWriter() io.Writer {
-	f.lock.Lock()
-	w := f.debugWriter
-	f.lock.Unlock()
-	return w
-}
-
-func (f *flog) SetDebugWriter(w io.Writer) io.Writer {
-	f.lock.Lock()
-	o := f.debugWriter
-	f.debugWriter = w
-	f.lock.Unlock()
-	return o
-}
-
 func (f *flog) CriticalPrintf(format string, args ...interface{}) {
 	f.lock.Lock()
-	flogPrintf(f.buf, f.criticalWriter, f.criticalFmt, format, args...)
+	flogPrintf(f.buf, f.criticalWriter, f.criticalFormat, format, args...)
 	f.lock.Unlock()
 }
 
 func (f *flog) ErrorPrintf(format string, args ...interface{}) {
 	f.lock.Lock()
-	flogPrintf(f.buf, f.errorWriter, f.errorFmt, format, args...)
+	flogPrintf(f.buf, f.errorWriter, f.errorFormat, format, args...)
 	f.lock.Unlock()
 }
 
 func (f *flog) WarningPrintf(format string, args ...interface{}) {
 	f.lock.Lock()
-	flogPrintf(f.buf, f.warningWriter, f.warningFmt, format, args...)
+	flogPrintf(f.buf, f.warningWriter, f.warningFormat, format, args...)
 	f.lock.Unlock()
 }
 
 func (f *flog) InfoPrintf(format string, args ...interface{}) {
 	f.lock.Lock()
-	flogPrintf(f.buf, f.infoWriter, f.infoFmt, format, args...)
+	flogPrintf(f.buf, f.infoWriter, f.infoFormat, format, args...)
 	f.lock.Unlock()
 }
 
 func (f *flog) DebugPrintf(format string, args ...interface{}) {
 	f.lock.Lock()
-	flogPrintf(f.buf, f.debugWriter, f.debugFmt, format, args...)
+	flogPrintf(f.buf, f.debugWriter, f.debugFormat, format, args...)
 	f.lock.Unlock()
 }
 
 func (f *flog) CriticalPrintln(args ...interface{}) {
 	f.lock.Lock()
-	flogPrintln(f.buf, f.criticalWriter, f.criticalFmt, args...)
+	flogPrintln(f.buf, f.criticalWriter, f.criticalFormat, args...)
 	f.lock.Unlock()
 }
 
 func (f *flog) ErrorPrintln(args ...interface{}) {
 	f.lock.Lock()
-	flogPrintln(f.buf, f.errorWriter, f.errorFmt, args...)
+	flogPrintln(f.buf, f.errorWriter, f.errorFormat, args...)
 	f.lock.Unlock()
 }
 
 func (f *flog) WarningPrintln(args ...interface{}) {
 	f.lock.Lock()
-	flogPrintln(f.buf, f.warningWriter, f.warningFmt, args...)
+	flogPrintln(f.buf, f.warningWriter, f.warningFormat, args...)
 	f.lock.Unlock()
 }
 
 func (f *flog) InfoPrintln(args ...interface{}) {
 	f.lock.Lock()
-	flogPrintln(f.buf, f.infoWriter, f.infoFmt, args...)
+	flogPrintln(f.buf, f.infoWriter, f.infoFormat, args...)
 	f.lock.Unlock()
 }
 
 func (f *flog) DebugPrintln(args ...interface{}) {
 	f.lock.Lock()
-	flogPrintln(f.buf, f.debugWriter, f.debugFmt, args...)
+	flogPrintln(f.buf, f.debugWriter, f.debugFormat, args...)
 	f.lock.Unlock()
 }
 
-func flogPrintf(buf []byte, out io.Writer, prefixFmt string, format string, args ...interface{}) {
+func flogPrintf(buf []byte, out io.Writer, prefixFormat string, format string, args ...interface{}) {
 	if out == nil {
 		return
 	}
-	buf = time.Now().AppendFormat(buf[:0], prefixFmt)
+	buf = time.Now().AppendFormat(buf[:0], prefixFormat)
 	bufr := bytes.NewBuffer(buf)
 	fmt.Fprintf(bufr, format, args...)
 	buf = bufr.Bytes()
@@ -227,11 +264,11 @@ func flogPrintf(buf []byte, out io.Writer, prefixFmt string, format string, args
 	out.Write(buf)
 }
 
-func flogPrintln(buf []byte, out io.Writer, prefixFmt string, args ...interface{}) {
+func flogPrintln(buf []byte, out io.Writer, prefixFormat string, args ...interface{}) {
 	if out == nil {
 		return
 	}
-	buf = time.Now().AppendFormat(buf[:0], prefixFmt)
+	buf = time.Now().AppendFormat(buf[:0], prefixFormat)
 	bufr := bytes.NewBuffer(buf)
 	fmt.Fprintln(bufr, args...)
 	buf = bufr.Bytes()
@@ -239,6 +276,11 @@ func flogPrintln(buf []byte, out io.Writer, prefixFmt string, args ...interface{
 		buf = append(buf, '\n')
 	}
 	out.Write(buf)
+}
+
+func (f *flog) Sub(c *Config) Flog {
+	cfg := resolveConfig(c, f)
+	return New(cfg)
 }
 
 type Logger interface {
