@@ -11,6 +11,8 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/gholt/brimio"
 )
 
 // Default is an instance of Flog for ease of use. Though I'd recommend writing
@@ -105,37 +107,25 @@ type Flog interface {
 	Sub(c *Config) Flog
 }
 
-type nilWriter struct {
-}
-
-func (n *nilWriter) Write(p []byte) (int, error) {
-	return len(p), nil
-}
-
-// NilWriter should be used in the Config when you wish a log level to *not*
-// log anything. If you set an io.Writer in the Config to nil, it is assumed
-// you want the default value.
-var NilWriter = &nilWriter{}
-
 // Config is used when creating a new Flog instance.
 type Config struct {
 	// Name will be used in the prefix of each log line.
 	Name string
 	// CriticalWriter will accept Critical level log output. If set to nil, the
 	// default os.Stderr will be used. To discard all Critical level output,
-	// set to NilWriter.
+	// set to an instance of brimio.NullIO.
 	CriticalWriter io.Writer
 	// ErrorWriter will accept Error level log output. If set to nil, the
 	// default os.Stderr will be used. To discard all Error level output, set
-	// to NilWriter.
+	// to an instance of brimio.NullIO.
 	ErrorWriter io.Writer
 	// WarningWriter will accept Warning level log output. If set to nil, the
 	// default os.Stderr will be used. To discard all Warning level output, set
-	// to NilWriter.
+	// to an instance of brimio.NullIO.
 	WarningWriter io.Writer
 	// InfoWriter will accept Info level log output. If set to nil, the default
 	// os.Stdout will be used. To discard all Info level output, set to
-	// NilWriter.
+	// an instance of brimio.NullIO.
 	InfoWriter io.Writer
 	// DebugWriter will accept Debug level log output. If set to nil, the
 	// default is to discard all Debug level output.
@@ -160,7 +150,7 @@ func resolveConfig(c *Config, f *flog) *Config {
 		} else {
 			cfg.CriticalWriter = os.Stderr
 		}
-	} else if _, ok := cfg.CriticalWriter.(*nilWriter); ok {
+	} else if _, ok := cfg.CriticalWriter.(*brimio.NullIO); ok {
 		cfg.CriticalWriter = nil
 	}
 	if cfg.ErrorWriter == nil {
@@ -169,7 +159,7 @@ func resolveConfig(c *Config, f *flog) *Config {
 		} else {
 			cfg.ErrorWriter = os.Stderr
 		}
-	} else if _, ok := cfg.ErrorWriter.(*nilWriter); ok {
+	} else if _, ok := cfg.ErrorWriter.(*brimio.NullIO); ok {
 		cfg.ErrorWriter = nil
 	}
 	if cfg.WarningWriter == nil {
@@ -178,7 +168,7 @@ func resolveConfig(c *Config, f *flog) *Config {
 		} else {
 			cfg.WarningWriter = os.Stderr
 		}
-	} else if _, ok := cfg.WarningWriter.(*nilWriter); ok {
+	} else if _, ok := cfg.WarningWriter.(*brimio.NullIO); ok {
 		cfg.WarningWriter = nil
 	}
 	if cfg.InfoWriter == nil {
@@ -187,7 +177,7 @@ func resolveConfig(c *Config, f *flog) *Config {
 		} else {
 			cfg.InfoWriter = os.Stdout
 		}
-	} else if _, ok := cfg.InfoWriter.(*nilWriter); ok {
+	} else if _, ok := cfg.InfoWriter.(*brimio.NullIO); ok {
 		cfg.InfoWriter = nil
 	}
 	if cfg.DebugWriter == nil {
@@ -196,7 +186,7 @@ func resolveConfig(c *Config, f *flog) *Config {
 		} else {
 			cfg.DebugWriter = nil
 		}
-	} else if _, ok := cfg.DebugWriter.(*nilWriter); ok {
+	} else if _, ok := cfg.DebugWriter.(*brimio.NullIO); ok {
 		cfg.DebugWriter = nil
 	}
 	return cfg
