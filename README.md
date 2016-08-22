@@ -1,3 +1,7 @@
+## This is still here for reference, but I recommend you use https://github.com/uber-go/zap as those folks have done a really great job at quick (to use and to run) and flexible logging.
+
+---
+
 # Flog
 ## Development Repository
 
